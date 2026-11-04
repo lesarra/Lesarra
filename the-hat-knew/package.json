@@ -1,0 +1,20 @@
+{
+  "name": "the-hat-knew",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "npx remotion render HatKnew out/the-hat-knew.mp4",
+    "still": "npx remotion still HatKnew out/still.png --frame=600"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.540",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "remotion": "4.0.540"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "typescript": "7.0.2"
+  }
+}
