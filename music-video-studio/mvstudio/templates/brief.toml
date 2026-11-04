@@ -1,0 +1,49 @@
+# Music video brief. Fill this in, then run:  mvstudio run <this folder>
+# Every field is passed to the team. Write as much or as little as you like;
+# the more specific you are, the better the video.
+
+[song]
+title = "Midnight Rivers"
+artist = "Lesarra"
+genre = "Synthwave / alt R&B"
+bpm = 92
+duration = "3:40"
+mood = "nostalgic, bittersweet, hopeful by the end"
+# Lyrics file in this folder. Add [Section m:ss] markers if you know them,
+# e.g. "[Chorus 0:48]"; otherwise the team estimates timing from bpm/duration.
+# Remove this line for an instrumental.
+lyrics_file = "lyrics.txt"
+meaning = "Letting go of a relationship while keeping the good memories."
+
+[vision]
+# narrative | performance | abstract | lyric-video | hybrid
+story_type = "hybrid"
+style = "cinematic, neon-lit night city, 35mm film grain, soft halation"
+must_include = ["the artist singing on a rooftop at night"]
+avoid = ["violence", "brand logos", "on-screen text except the title card"]
+notes = "Feels like a late-night drive when you can't sleep."
+
+[production]
+image_tool = "Midjourney"         # or Flux, Ideogram, GPT image, ...
+video_tool = "Runway"             # or Kling, Veo, Luma, Pika, ...
+editor = "CapCut"                 # or Premiere Pro, DaVinci Resolve, ...
+aspect_ratios = ["16:9", "9:16"]
+budget = "low"                    # low | medium | high: how many generations you can afford
+artist_on_camera = true
+artist_look = "describe the artist's appearance here so the team can keep it consistent"
+
+[channel]
+name = "Lesarra"
+audience = "18-30, fans of moody synth-pop and late-night playlists"
+language = "English"
+title_format = "Artist - Song (Official Music Video)"
+
+[studio]
+# draft | standard | masterpiece
+quality = "masterpiece"
+
+# Effort is decided automatically for each task. To force a level for a stage,
+# uncomment it: low | medium | high | xhigh | max
+[studio.effort]
+# treatment = "max"
+# storyboard = "xhigh"

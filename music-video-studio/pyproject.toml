@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mvstudio"
+version = "0.1.0"
+description = "A team of Claude models that plans your music video, each on the job it does best."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["anthropic>=2.4"]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[project.scripts]
+mvstudio = "mvstudio.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["mvstudio*"]
+
+[tool.setuptools.package-data]
+mvstudio = ["templates/*"]
