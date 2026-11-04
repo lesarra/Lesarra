@@ -1,5 +1,5 @@
 import React from 'react';
-import {AbsoluteFill, Easing} from 'remotion';
+import {AbsoluteFill, Easing, Img, staticFile} from 'remotion';
 import type {Transition} from '../direction';
 import {clamp01, rand} from './theme';
 
@@ -10,7 +10,7 @@ export const TRANSITION_FRAMES: Record<Transition, number> = {
   'fade-black': 20,
   crossfade: 16,
   'ink-bleed': 22,
-  'page-turn': 22,
+  'page-turn': 20,
   iris: 18,
   'blur-dissolve': 18,
   'slide-left': 14,
@@ -224,41 +224,82 @@ export const TransitionLayer: React.FC<Props> = ({type, raw, children}) => {
     }
 
     case 'page-turn': {
-      const lean = 70;
-      const ex = (1 - p) * (W + 500) - 250; // edge x at mid-height
-      const xt = ex + lean;
-      const xb = ex - lean;
-      const skew = -Math.atan(lean / (H / 2)) * (180 / Math.PI);
-      const strip = (left: number, width: number, bg: string, extra?: React.CSSProperties) => (
-        <div
-          style={{
-            position: 'absolute',
-            left,
-            top: -20,
-            width,
-            height: H + 40,
-            transform: `skewX(${skew}deg)`,
-            background: bg,
-            ...extra,
-          }}
-        />
-      );
+      // The incoming image is a page swinging over from the left (hinge on its left edge).
+      // The hinge glides in from slightly right of the frame edge so the parchment back is seen first.
+      const deg = 180 - 180 * p; // the page lies away from the camera as it settles onto the stack
+      const rad = (deg * Math.PI) / 180;
+      const hinge = W * 0.42 * Math.sin(Math.PI * p);
+      const flat = Math.abs(Math.cos(rad)); // 1 = facing camera
+      const front = deg < 90;
+      const zf = -W * Math.sin(rad);
+      const farX = hinge + (W * Math.cos(rad) * 2400) / (2400 - zf); // projected free edge
+      const coverEdge = front ? farX : hinge;
+      const shade = 1 - flat; // 0 facing, 1 edge-on
+      const shadowO = clamp01(1.0 * (0.45 + 0.55 * shade) * (1 - p * 0.7));
       return (
         <>
-          {/* shadow the lifting page throws on the old page */}
-          {strip(ex - 320, 260, 'linear-gradient(90deg, rgba(25,12,2,0), rgba(25,12,2,0.4))')}
-          <Fill style={{clipPath: `polygon(${xt}px 0px, ${W + 400}px 0px, ${W + 400}px ${H}px, ${xb}px ${H}px)`}}>
-            {children}
-            {/* shadow cast on the revealed page */}
-            {strip(ex, 230, 'linear-gradient(90deg, rgba(20,10,0,0.6), rgba(20,10,0,0))')}
-          </Fill>
-          {/* curled back of the turning page */}
-          {strip(
-            ex - 96,
-            100,
-            'linear-gradient(90deg, rgba(120,84,40,0) 0%, rgba(255,240,205,0.78) 45%, rgba(236,206,140,0.95) 82%, rgba(90,58,24,0.95) 100%)',
-          )}
-          {strip(ex - 3, 5, 'linear-gradient(90deg, rgba(255,230,160,0.9), rgba(255,230,160,0.2))')}
+          {/* soft shadow cast on the uncovered outgoing page */}
+          <div
+            style={{
+              position: 'absolute',
+              left: coverEdge - 40,
+              top: 0,
+              width: 520,
+              height: H,
+              opacity: shadowO,
+              background:
+                'linear-gradient(90deg, rgba(20,10,2,0.85) 0%, rgba(20,10,2,0.5) 18%, rgba(20,10,2,0.2) 50%, rgba(20,10,2,0) 100%)',
+            }}
+          />
+          <AbsoluteFill
+            style={{
+              transformOrigin: '0px 50%',
+              transform: `translateX(${hinge.toFixed(1)}px) perspective(2400px) rotateY(${deg.toFixed(2)}deg)`,
+            }}
+          >
+            {front ? (
+              <AbsoluteFill style={{overflow: 'hidden'}}>
+                {children}
+                <Fill style={{backgroundColor: `rgba(25,12,4,${(0.6 * Math.pow(shade, 1.3)).toFixed(3)})`}} />
+                {/* curl highlight along the moving edge */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: 0,
+                    width: 220,
+                    height: H,
+                    opacity: clamp01(shade * 1.6) * 0.9,
+                    background:
+                      'linear-gradient(90deg, rgba(255,240,200,0) 0%, rgba(255,236,190,0.45) 65%, rgba(255,248,225,0.95) 94%, rgba(150,104,50,0.8) 100%)',
+                  }}
+                />
+              </AbsoluteFill>
+            ) : (
+              <AbsoluteFill style={{overflow: 'hidden', backgroundColor: '#b89a63'}}>
+                {/* the page seen from behind */}
+                <AbsoluteFill>
+                  <Img
+                    src={staticFile('textures/parchment_fibre.png')}
+                    style={{width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.78) sepia(0.35)'}}
+                  />
+                  <Fill style={{backgroundColor: `rgba(40,22,6,${(0.1 + 0.55 * shade * shade).toFixed(3)})`}} />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      top: 0,
+                      width: 240,
+                      height: H,
+                      opacity: clamp01(0.5 + shade),
+                      background:
+                        'linear-gradient(90deg, rgba(255,236,190,0) 0%, rgba(255,236,190,0.25) 55%, rgba(255,240,200,0.7) 92%, rgba(120,84,40,0.65) 100%)',
+                    }}
+                  />
+                </AbsoluteFill>
+              </AbsoluteFill>
+            )}
+          </AbsoluteFill>
         </>
       );
     }

@@ -2,6 +2,11 @@ import React from 'react';
 import {AbsoluteFill, Easing, Img, staticFile, useCurrentFrame} from 'remotion';
 import type {Motion, Transition} from '../direction';
 import {clamp01, rand} from './theme';
+import {shots, AUDIO_DURATION} from '../shots';
+import {BEATS, DOWNBEATS} from '../analysis';
+import {mouths} from '../fx';
+import {ShotFX} from './fx';
+import {HatMouth} from './HatMouth';
 import {TransitionLayer, slideOut, transitionEase} from './Transitions';
 
 const W = 1920;
@@ -86,14 +91,43 @@ const pose = (m: Motion, f: number, n: number, shot: number): Pose => {
   return {s, x: cx(x * mx * 0.92 + jx, mx), y: cx(y * my * 0.92 + jy, my), r};
 };
 
-const Stack: React.FC<{image: string; motion: Motion; shot: number; len: number}> = ({
+const FPS = 30;
+const CHORUS = ['Chorus 1', 'Chorus 2', 'Final chorus'];
+const sectionAt = (t: number) => {
+  let sec = shots[0].section;
+  for (const s of shots) if (s.start <= t) sec = s.section;
+  return sec;
+};
+/** zoom-pulse amount on the beat at absolute time t */
+const beatPulse = (t: number) => {
+  let last = -1;
+  for (let i = 0; i < BEATS.length; i++) {
+    if (BEATS[i] <= t) last = i;
+    else break;
+  }
+  if (last < 0) return 0;
+  const since = t - BEATS[last];
+  const section = sectionAt(t);
+  let a = 0;
+  if (CHORUS.includes(section)) a = 0.012;
+  else if (section !== 'Bridge' && section !== 'Outro' && DOWNBEATS.some((d) => Math.abs(d - BEATS[last]) < 0.03)) a = 0.006;
+  return a * Math.exp(-8 * since);
+};
+
+const Stack: React.FC<{image: string; motion: Motion; shot: number; len: number; abs: number; t0: number; t1: number}> = ({
   image,
   motion,
   shot,
   len,
+  abs,
+  t0,
+  t1,
 }) => {
   const f = useCurrentFrame();
   const p = pose(motion, f, len, shot);
+  const t = abs / FPS;
+  const pulse = 1 + beatPulse(t);
+  const mouth = mouths[shot];
   const src = staticFile(image);
   return (
     <AbsoluteFill style={{backgroundColor: '#120c07', overflow: 'hidden'}}>
@@ -112,12 +146,14 @@ const Stack: React.FC<{image: string; motion: Motion; shot: number; len: number}
       />
       <AbsoluteFill
         style={{
-          transform: `translate(${p.x}px, ${p.y}px) rotate(${p.r}deg) scale(${p.s})`,
+          transform: `translate(${p.x}px, ${p.y}px) rotate(${p.r}deg) scale(${p.s * pulse})`,
           WebkitMaskImage: 'radial-gradient(ellipse 78% 82% at 50% 50%, #000 72%, rgba(0,0,0,0.55) 100%)',
           maskImage: 'radial-gradient(ellipse 78% 82% at 50% 50%, #000 72%, rgba(0,0,0,0.55) 100%)',
         }}
       >
         <Img src={src} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+        {mouth ? <HatMouth mouth={mouth} src={src} t={t} /> : null}
+        <ShotFX shot={shot} t={t} f={f} t0={t0} t1={t1} />
       </AbsoluteFill>
     </AbsoluteFill>
   );
@@ -134,6 +170,11 @@ export const ShotScene: React.FC<{
   outFrames?: number;
 }> = ({image, shot, motion, len, inType, inFrames, outType, outFrames}) => {
   const frame = useCurrentFrame();
+  const idx = Math.max(0, shots.findIndex((s) => s.shot === shot));
+  const cut = idx === 0 ? 0 : Math.round(shots[idx].start * FPS);
+  const abs = (idx === 0 ? 0 : cut - Math.floor(inFrames / 2)) + frame;
+  const t0 = shots[idx].start;
+  const t1 = idx < shots.length - 1 ? shots[idx + 1].start : AUDIO_DURATION;
   const raw = frame / Math.max(1, inFrames);
   let exit: React.CSSProperties | undefined;
   if (outType && outFrames) {
@@ -152,7 +193,7 @@ export const ShotScene: React.FC<{
   return (
     <TransitionLayer type={inType} raw={raw}>
       <AbsoluteFill style={exit}>
-        <Stack image={image} motion={motion} shot={shot} len={len} />
+        <Stack image={image} motion={motion} shot={shot} len={len} abs={abs} t0={t0} t1={t1} />
       </AbsoluteFill>
     </TransitionLayer>
   );

@@ -1,7 +1,15 @@
 import React from 'react';
-import {AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig} from 'remotion';
+import {AbsoluteFill, Img, interpolate, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
 import {GOLD, rand} from './theme';
 import {lyrics} from '../lyrics';
+import {shots} from '../shots';
+import {DOWNBEATS, ENERGY} from '../analysis';
+
+const sectionRange = (name: string): [number, number] => {
+  const l = shots.filter((s) => s.section === name);
+  return [l[0].start, l[l.length - 1].end];
+};
+const CHORUSES = ['Chorus 1', 'Chorus 2', 'Final chorus'].map(sectionRange);
 
 const BRIDGE: [number, number] = [142, 172];
 const FINAL: [number, number] = [172, 208];
@@ -22,7 +30,10 @@ export const Atmosphere: React.FC = () => {
     0.15 * Math.sin(frame / 3.1 + 1.7) +
     0.1 * Math.sin(frame / 1.9 + 4);
   const moon = env(sec, BRIDGE);
-  const warm = 0.06 + 0.07 * flicker;
+  const energy = ENERGY[Math.min(ENERGY.length - 1, Math.max(0, frame))] ?? 0.4;
+  const warm = 0.06 + 0.07 * flicker + 0.05 * energy;
+  const leak = Math.max(...CHORUSES.map((c) => env(sec, c, 1.5)));
+  const grain = frame % 8;
 
   return (
     <>
@@ -43,6 +54,47 @@ export const Atmosphere: React.FC = () => {
       <AbsoluteFill
         style={{backgroundColor: `rgba(20,35,90,${0.22 * moon})`, mixBlendMode: 'multiply'}}
       />
+      {/* warm light leaks during the choruses */}
+      {leak > 0.01 ? (
+        <AbsoluteFill style={{opacity: leak, mixBlendMode: 'screen'}}>
+          {[0, 1, 2].map((i) => {
+            const x = 50 + 42 * Math.sin(sec * 0.11 + i * 2.1);
+            const y = 45 + 38 * Math.sin(sec * 0.09 + i * 3.3 + 1);
+            const o = (0.1 + 0.07 * (0.5 + 0.5 * Math.sin(sec * 0.4 + i * 1.7))) * (0.85 + 0.3 * energy);
+            return (
+              <div
+                key={i}
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: `radial-gradient(ellipse 38% 46% at ${x}% ${y}%, rgba(255,${170 + i * 22},${90 + i * 20},${o}) 0%, rgba(255,150,70,0) 100%)`,
+                }}
+              />
+            );
+          })}
+        </AbsoluteFill>
+      ) : null}
+      {/* parchment fibre */}
+      <Img
+        src={staticFile('textures/parchment_fibre.png')}
+        style={{position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.08, mixBlendMode: 'multiply'}}
+      />
+      {/* film grain, one frame per tick */}
+      {Array.from({length: 8}).map((_, i) => (
+        <Img
+          key={i}
+          src={staticFile(`textures/grain_${i}.png`)}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            opacity: i === grain ? 0.07 : 0,
+            mixBlendMode: 'overlay',
+          }}
+        />
+      ))}
       {/* parchment vignette */}
       <AbsoluteFill
         style={{
@@ -105,8 +157,29 @@ export const BeatPulse: React.FC = () => {
     const dt = sec - st;
     if (dt >= 0 && dt < 0.7) pulse = Math.max(pulse, Math.exp(-dt * 7));
   }
-  if (pulse < 0.01) return null;
-  return <AbsoluteFill style={{backgroundColor: '#fff1d0', opacity: 0.02 * pulse * 1.5, mixBlendMode: 'screen'}} />;
+  // final chorus: downbeats add a stronger warm flash
+  let flash = 0;
+  if (sec >= FINAL[0] && sec <= FINAL[1]) {
+    for (const d of DOWNBEATS) {
+      const dt = sec - d;
+      if (dt >= 0 && dt < 0.6) flash = Math.max(flash, Math.exp(-dt * 6));
+    }
+  }
+  if (pulse < 0.01 && flash < 0.01) return null;
+  return (
+    <>
+      <AbsoluteFill style={{backgroundColor: '#fff1d0', opacity: 0.02 * pulse * 1.5, mixBlendMode: 'screen'}} />
+      {flash > 0.01 ? (
+        <AbsoluteFill
+          style={{
+            background: 'radial-gradient(ellipse at 50% 55%, rgba(255,200,110,0.9) 0%, rgba(255,160,70,0.4) 60%, rgba(255,140,60,0) 100%)',
+            opacity: 0.1 * flash,
+            mixBlendMode: 'screen',
+          }}
+        />
+      ) : null}
+    </>
+  );
 };
 
 const BOKEH = 16;
